@@ -24,21 +24,18 @@ int main() {
 	printf("OpenMP Implementation\n");
 	struct timeval start, end;
 	long usecs;
-	gettimeofday(&start, NULL);
 	int tid;
 	omp_set_num_threads(4);
-	//#pragma omp parallel shared(text, key) private(i, tid) 
+	tid = omp_get_thread_num();
+	if (tid == 0){
+		printf("num threads: %i\n", omp_get_num_threads());
+		printf("num cores: %i\n", omp_get_num_procs());
+	}	
+
+	gettimeofday(&start, NULL);
 	{
-		//tid = omp_get_thread_num();
-		//if (tid == 0){
-		//	printf("num threads: %i\n", omp_get_num_threads());
-		//}	
 		#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
 		for (i = 0; i < TEXT_BYTES/4/2; i += 2){
-			tid = omp_get_thread_num();
-			if (tid == 0){
-				printf("num threads: %i\n", omp_get_num_threads());
-			}	
 			encrypt (&text[i], key);
 		}
 		#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
@@ -47,6 +44,7 @@ int main() {
 		}
 	}
 	gettimeofday(&end, NULL);
+	
 	usecs = end.tv_usec - start.tv_usec;
 
 	// Verify block
@@ -56,6 +54,7 @@ int main() {
 	printf("Time to encrypt/decrypt: %f\n", (float)usecs);
 
 	printf("Plain C Implementation\n");
+
 	gettimeofday(&start, NULL);
 	{
 		for (i = 0; i < TEXT_BYTES/4/2; i += 2){
@@ -66,6 +65,7 @@ int main() {
 		}
 	}
 	gettimeofday(&end, NULL);
+
 	usecs = end.tv_usec - start.tv_usec;
 
 	// Verify block
