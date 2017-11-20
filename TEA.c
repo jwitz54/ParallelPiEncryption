@@ -3,79 +3,108 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <omp.h>
+#include <mpi.h>
 #include <time.h>
 
-#define TEXT_BYTES 16384
+#define TEXT_BYTES 512
 
 void encrypt (uint32_t* v, uint32_t* k);
 void decrypt (uint32_t* v, uint32_t* k);
+void mpEncrypt(uint32_t *text, uint32_t *key);
+void mpDecrypt(uint32_t *text, uint32_t *key);
+void plainEncrypt(uint32_t *text, uint32_t *key);
+void plainDecrypt(uint32_t *text, uint32_t *key);
+int verify(uint32_t *text, uint32_t *text_gold);
 
 int main() {
 	
+	// Setup OpemMPI
+	MPI_Init(NULL, NULL);
+
+	int world_size;
+	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+	int world_rank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+
 	// Set up key and plaintext block
 	int i;
 	uint32_t key[4] = {1, 1, 1, 1};
 	uint32_t text[TEXT_BYTES/4];
+	uint32_t text_gold[TEXT_BYTES/4];
 	for (i = 0; i < TEXT_BYTES/4; i++){
 		text[i] = 4;
+		text_gold[i] = 4;
 	}	
 
-	// Encrypt and decrypt block
-	printf("OpenMP Implementation\n");
+	// --------------OPENMP IMPLEMENTATION------------- 
+	// Setup timing
 	struct timeval start, end;
 	long usecs;
 	int tid;
-	omp_set_num_threads(4);
-	tid = omp_get_thread_num();
-	if (tid == 0){
-		printf("num threads: %i\n", omp_get_num_threads());
-		printf("num cores: %i\n", omp_get_num_procs());
-	}	
+	printf("OpenMP Implementation\n");
 
+	// Perform and time encryption
 	gettimeofday(&start, NULL);
-	{
-		#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
-		for (i = 0; i < TEXT_BYTES/4/2; i += 2){
-			encrypt (&text[i], key);
-		}
-		#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
-		for (i = 0; i < TEXT_BYTES/4/2; i += 2){
-			decrypt (&text[i], key);
-		}
-	}
-	gettimeofday(&end, NULL);
-	
-	usecs = end.tv_usec - start.tv_usec;
-
-	// Verify block
-	for (i = 0; i < TEXT_BYTES/4; i++){
-		//printf("b%d: %d\n", i, text[i]);
-	}	
-	printf("Time to encrypt/decrypt: %f\n", (float)usecs);
-
-	printf("Plain C Implementation\n");
-
-	gettimeofday(&start, NULL);
-	{
-		for (i = 0; i < TEXT_BYTES/4/2; i += 2){
-			encrypt (&text[i], key);
-		}
-		for (i = 0; i < TEXT_BYTES/4/2; i += 2){
-			decrypt (&text[i], key);
-		}
-	}
+	plainEncrypt(text, key);
+	plainDecrypt(text, key);
 	gettimeofday(&end, NULL);
 
+	// Calculate time and verify
 	usecs = end.tv_usec - start.tv_usec;
-
-	// Verify block
-	for (i = 0; i < TEXT_BYTES/4; i++){
-		//printf("b%d: %d\n", i, text[i]);
-	}	
 	printf("Time to encrypt/decrypt: %f\n", (float)usecs);
+	if (verify(text, text_gold) == 0){
+		printf("Incorrect plaintext\n");
+	} else {
+		printf("Correct plaintext\n");
+	}
 
 	return 0;
 
+}
+
+int verify(uint32_t *text, uint32_t *text_gold){
+	int i;
+	int result = 1;
+	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
+		if (text[i] != text_gold[i]){
+			printf("index: %d, text: %d, gold: %d", i, text[i], text_gold[i]);
+			result = 0;
+			break;
+		}	
+	}
+	return result;
+}
+
+void plainEncrypt(uint32_t *text, uint32_t *key){
+	int i;
+	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
+		encrypt (&text[i], key);
+	}
+}
+
+void plainDecrypt(uint32_t *text, uint32_t *key){
+	int i;
+	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
+		decrypt (&text[i], key);
+	}
+}
+
+void mpEncrypt(uint32_t *text, uint32_t *key){
+	int i;
+	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
+	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
+		encrypt (&text[i], key);
+	}
+}
+
+void mpDecrypt(uint32_t *text, uint32_t *key){
+	int i;
+	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
+	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
+		decrypt (&text[i], key);
+	}
 }
 
 void encrypt (uint32_t* v, uint32_t* k) {
