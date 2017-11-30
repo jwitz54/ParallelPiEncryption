@@ -6,7 +6,7 @@
 #include <mpi.h>
 #include <time.h>
 
-#define TEXT_BYTES 512
+#define TEXT_BYTES 16
 
 void encrypt (uint32_t* v, uint32_t* k);
 void decrypt (uint32_t* v, uint32_t* k);
@@ -27,7 +27,6 @@ int main() {
 	int world_rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-
 	// Set up key and plaintext block
 	int i;
 	uint32_t key[4] = {1, 1, 1, 1};
@@ -38,26 +37,36 @@ int main() {
 		text_gold[i] = 4;
 	}	
 
-	// --------------OPENMP IMPLEMENTATION------------- 
-	// Setup timing
-	struct timeval start, end;
-	long usecs;
-	int tid;
-	printf("OpenMP Implementation\n");
+	if (world_rank == 0){
 
-	// Perform and time encryption
-	gettimeofday(&start, NULL);
-	plainEncrypt(text, key);
-	plainDecrypt(text, key);
-	gettimeofday(&end, NULL);
+		// Setup timing
+		struct timeval start, end;
+		long usecs;
+		int tid;
+		printf("OpenMP Implementation\n");
 
-	// Calculate time and verify
-	usecs = end.tv_usec - start.tv_usec;
-	printf("Time to encrypt/decrypt: %f\n", (float)usecs);
-	if (verify(text, text_gold) == 0){
-		printf("Incorrect plaintext\n");
+		// Perform and time encryption
+		gettimeofday(&start, NULL);
+		for (i = 0; i < TEXT_BYTES/4; i++){
+			printf("sending\n");
+			MPI_Send(key, 4, MPI_UNSIGNED, 1, 0, MPI_COMM_WORLD);
+			//MPI_Send(&text[i*world_size], TEXT_BYTES/world_size/4, MPI_UNSIGNED, i, 0, MPI_COMM_WORLD);
+		}
+		gettimeofday(&end, NULL);
+
+		// Calculate time and verify
+		usecs = end.tv_usec - start.tv_usec;
+		printf("Time to encrypt/decrypt: %f\n", (float)usecs);
+		if (verify(text, text_gold) == 0){
+			printf("Incorrect plaintext\n");
+		} else {
+			printf("Correct plaintext\n");
+		}
 	} else {
-		printf("Correct plaintext\n");
+		MPI_Status status;
+		MPI_Recv(key, 4, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD, &status);
+		//plainEncrypt(text, key);
+		//plainDecrypt(text, key);
 	}
 
 	return 0;
