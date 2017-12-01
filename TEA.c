@@ -7,6 +7,8 @@
 #include <time.h>
 
 #define TEXT_BYTES 16
+#define chunk 4
+#define num_threads 4
 
 void encrypt (uint32_t* v, uint32_t* k);
 void decrypt (uint32_t* v, uint32_t* k);
@@ -36,7 +38,8 @@ int main() {
 		text[i] = 4;
 		text_gold[i] = 4;
 	}	
-
+	printf("world rank: %d\n", world_rank);	
+	//MAIN THREAD
 	if (world_rank == 0){
 
 		// Setup timing
@@ -47,6 +50,8 @@ int main() {
 
 		// Perform and time encryption
 		gettimeofday(&start, NULL);
+		
+		//LOOK HERE
 		for (i = 0; i < TEXT_BYTES/4; i++){
 			printf("sending\n");
 			MPI_Send(key, 4, MPI_UNSIGNED, 1, 0, MPI_COMM_WORLD);
