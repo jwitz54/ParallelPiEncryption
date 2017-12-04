@@ -6,7 +6,7 @@
 #include <mpi.h>
 #include <time.h>
 
-#define TEXT_BYTES 3000000
+#define TEXT_BYTES 12000
 #define chunk 4
 #define num_threads 4
 #define NUM_PI 3

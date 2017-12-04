@@ -5,7 +5,7 @@
 #include <omp.h>
 #include <time.h>
 
-#define TEXT_BYTES 3000000
+#define TEXT_BYTES 12000
 #define chunk 4
 #define MASTER 0
 

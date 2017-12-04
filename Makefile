@@ -3,8 +3,8 @@ tea: TEA.c
 	mpirun -np 4 ./TEA
 
 tea_mpi: jon_mpi_TEA.c
-	mpicc -o jon_mpi_TEA jon_mpi_TEA.c
-	mpirun --hostfile machinefile -np 3 ./jon_mpi_TEA
+	mpicc -o tea_mpi jon_mpi_TEA.c
+	mpirun --hostfile machinefile -np 3 ./tea_mpi
 
 mpi: MPITest.c
 	mpicc -o MPITest MPITest.c -fopenmp
