@@ -6,77 +6,93 @@
 #include <mpi.h>
 #include <time.h>
 
-#define TEXT_BYTES 16
+#define TEXT_BYTES 300
 #define chunk 4
 #define num_threads 4
+#define NUM_PI 3
 #define MASTER 0
 
-void encrypt (uint32_t* v, uint32_t* k);
-void decrypt (uint32_t* v, uint32_t* k);
+void encrypt (uint32_t* v, uint32_t* k, int size);
+void decrypt (uint32_t* v, uint32_t* k, int size);
 void mpEncrypt(uint32_t *text, uint32_t *key);
 void mpDecrypt(uint32_t *text, uint32_t *key);
 void plainEncrypt(uint32_t *text, uint32_t *key);
 void plainDecrypt(uint32_t *text, uint32_t *key);
 int verify(uint32_t *text, uint32_t *text_gold);
 
-int main() {
+int size;
+int rank;
+
+int main(int argc, char** argv) {
 	
 	// Setup OpemMPI
-	MPI_Init(NULL, NULL);
-
-	int world_size;
-	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-
-	int world_rank;
-	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+	MPI_Init(&argc, &argv);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	
-	omp_set_num_threads(num_threads);
+	// Variables
+	double timeStart, timeEnd;
+	unsigned char* text_ptr = NULL;
+	int text_size;
+	int size_per_proc;
 
-	// Set up key and plaintext block
+	// Fill plaintext and key
 	int i;
 	uint32_t key[4] = {1, 1, 1, 1};
 	uint32_t text[TEXT_BYTES/4];
+	uint32_t text_decrypted[TEXT_BYTES/4];
+	uint32_t text_sub[TEXT_BYTES/4/NUM_PI];
 	uint32_t text_gold[TEXT_BYTES/4];
 	for (i = 0; i < TEXT_BYTES/4; i++){
 		text[i] = 4;
 		text_gold[i] = 4;
-	}	
-	printf("world rank: %d\n", world_rank);	
+	}
+	
+	if(rank == MASTER){
+		//Load keys and text into master thread
+		text_ptr = (unsigned char*) (&(text[0]));
+		timeStart = MPI_Wtime();
+		text_size = TEXT_BYTES/4;
+		size_per_proc = text_size/NUM_PI;
+	}
+	
+	//Broadcast Message size and key to all nodes
+	MPI_Bcast(key, 4, MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);
+	MPI_Bcast(&text_size, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
+	
+	//MPI Barrier for Synchronisation
+	MPI_Barrier(MPI_COMM_WORLD);
+	
+	printf("rank: %d, key: %d\n", rank, key[0]);
 
-	//MAIN THREAD
-	if (world_rank == MASTER){
+	
+	//Scatter dimensions for input image from Master process
+	MPI_Scatter(text, size_per_proc, MPI_UNSIGNED, text_sub, size_per_proc,
+				MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);
+				
+	plainEncrypt(text_sub, key, size_per_proc);
+	plainDecrypt(text_sub, key, size_per_proc);
+	
+	// Gather results
+	MPI_Gather(text_sub, size_per_proc, MPI_UNSIGNED, text_size, MPI_UNSIGNED,
+				MASTER, MPI_COMM_WORLD);
+	
+	//MPI Barrier for Synchronisation
+	MPI_Barrier(MPI_COMM_WORLD);
+	
+	
+	 
+	//omp_set_num_threads(num_threads);
 
-		// Setup timing
-		struct timeval start, end;
-		long usecs;
-		int tid;
-		printf("OpenMP Implementation\n");
+	// Set up key and plaintext block
 
-		// Perform and time encryption
-		gettimeofday(&start, NULL);
-		
-		//LOOK HERE
-		for (i = 0; i < TEXT_BYTES/4; i++){
-			printf("sending\n");
-			MPI_Send(key, 4, MPI_UNSIGNED, 1, 0, MPI_COMM_WORLD);
-			//MPI_Send(&text[i*world_size], TEXT_BYTES/world_size/4, MPI_UNSIGNED, i, 0, MPI_COMM_WORLD);
-		}
-		gettimeofday(&end, NULL);
-
-		// Calculate time and verify
-		usecs = end.tv_usec - start.tv_usec;
-		printf("Time to encrypt/decrypt: %f\n", (float)usecs);
+	// Stop timer and verify
+	if (rank == MASTER){
 		if (verify(text, text_gold) == 0){
 			printf("Incorrect plaintext\n");
 		} else {
 			printf("Correct plaintext\n");
 		}
-	//SLAVE THREADS	
-	}else { 
-		MPI_Status status;
-		MPI_Recv(key, 4, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD, &status);
-		//plainEncrypt(text, key);
-		//plainDecrypt(text, key);
 	}
 
 	return 0;
@@ -96,16 +112,16 @@ int verify(uint32_t *text, uint32_t *text_gold){
 	return result;
 }
 
-void plainEncrypt(uint32_t *text, uint32_t *key){
+void plainEncrypt(uint32_t *text, uint32_t *key, int size){
 	int i;
-	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
+	for (i = 0; i < size; i++){
 		encrypt (&text[i], key);
 	}
 }
 
-void plainDecrypt(uint32_t *text, uint32_t *key){
+void plainDecrypt(uint32_t *text, uint32_t *key, int size){
 	int i;
-	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
+	for (i = 0; i < size; i++){
 		decrypt (&text[i], key);
 	}
 }
