@@ -6,16 +6,15 @@
 #include <mpi.h>
 #include <time.h>
 
-#define TEXT_BYTES 600
+#define TEXT_BYTES 3000000
 #define chunk 4
-#define num_threads 4
 #define NUM_PI 3
 #define MASTER 0
 
 void encrypt (uint32_t* v, uint32_t* k);
 void decrypt (uint32_t* v, uint32_t* k);
-void mpEncrypt(uint32_t *text, uint32_t *key);
-void mpDecrypt(uint32_t *text, uint32_t *key);
+void mpEncrypt(uint32_t *text, uint32_t *key, int size);
+void mpDecrypt(uint32_t *text, uint32_t *key, int size);
 void plainEncrypt(uint32_t *text, uint32_t *key, int size);
 void plainDecrypt(uint32_t *text, uint32_t *key, int size);
 int verify(uint32_t *text, uint32_t *text_gold);
@@ -126,18 +125,18 @@ void plainDecrypt(uint32_t *text, uint32_t *key, int size){
 }
 
 void mpEncrypt(uint32_t *text, uint32_t *key, int size){
-	omp_set_num_threads(4);
+	//omp_set_num_threads(4);
 	int i;
-	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) 
+	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
 	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
 		encrypt (&text[i], key);
 	}
 }
 
 void mpDecrypt(uint32_t *text, uint32_t *key, int size){
-	omp_set_num_threads(4);
+	//omp_set_num_threads(4);
 	int i;
-	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk)  
+	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
 	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
 		decrypt (&text[i], key);
 	}

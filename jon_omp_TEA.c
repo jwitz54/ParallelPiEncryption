@@ -5,7 +5,7 @@
 #include <omp.h>
 #include <time.h>
 
-#define TEXT_BYTES 262144
+#define TEXT_BYTES 3000000
 #define chunk 4
 #define MASTER 0
 
@@ -102,10 +102,10 @@ void plainDecrypt(uint32_t *text, uint32_t *key){
 }
 
 void mpEncrypt(uint32_t *text, uint32_t *key){
-	omp_set_num_threads(4);
+	//omp_set_num_threads(4);
 	int i;
 	//#pragma omp parallel for private(i) 
-	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) 
+	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
 	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
 		encrypt (&text[i], key);
 	}
@@ -113,10 +113,10 @@ void mpEncrypt(uint32_t *text, uint32_t *key){
 }
 
 void mpDecrypt(uint32_t *text, uint32_t *key){
-	omp_set_num_threads(4);
+	//omp_set_num_threads(4);
 	int i;
 	//#pragma omp parallel for private(i)  
-	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) 
+	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
 	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
 	
 		decrypt (&text[i], key);

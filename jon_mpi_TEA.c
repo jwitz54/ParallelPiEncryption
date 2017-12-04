@@ -6,7 +6,7 @@
 #include <mpi.h>
 #include <time.h>
 
-#define TEXT_BYTES 600
+#define TEXT_BYTES 3000000
 #define chunk 4
 #define num_threads 4
 #define NUM_PI 3
@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	printf("Size: %d\t Rank: %d\n", size, rank);
 	
 	// Variables
 	double timeStart, timeEnd;
@@ -91,6 +92,8 @@ int main(int argc, char** argv) {
 			printf("Correct plaintext\n");
 		}
 	}
+	
+	MPI_Finalize();
 
 	return 0;
 
