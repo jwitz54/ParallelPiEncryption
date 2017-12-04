@@ -67,8 +67,10 @@ int main(int argc, char** argv) {
 	//Scatter dimensions for input image from Master process
 	MPI_Scatter(text, size_per_proc, MPI_UNSIGNED, text_sub, size_per_proc,
 				MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);	
-	plainEncrypt(text_sub, key, size_per_proc);
-	plainDecrypt(text_sub, key, size_per_proc);
+	//plainEncrypt(text_sub, key, size_per_proc);
+	mpEncrypt(text_sub, key, size_per_proc);
+	//plainDecrypt(text_sub, key, size_per_proc);
+	mpDecrypt(text_sub, key, size_per_proc);
 	
 	// Gather results
 	MPI_Gather(text_sub, size_per_proc, MPI_UNSIGNED, text_decrypted, size_per_proc, MPI_UNSIGNED,
@@ -123,17 +125,19 @@ void plainDecrypt(uint32_t *text, uint32_t *key, int size){
 	}
 }
 
-void mpEncrypt(uint32_t *text, uint32_t *key){
+void mpEncrypt(uint32_t *text, uint32_t *key, int size){
+	omp_set_num_threads(4);
 	int i;
-	#pragma omp parallel for private(i) 
+	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) 
 	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
 		encrypt (&text[i], key);
 	}
 }
 
-void mpDecrypt(uint32_t *text, uint32_t *key){
+void mpDecrypt(uint32_t *text, uint32_t *key, int size){
+	omp_set_num_threads(4);
 	int i;
-	#pragma omp parallel for private(i)  
+	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk)  
 	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
 		decrypt (&text[i], key);
 	}
