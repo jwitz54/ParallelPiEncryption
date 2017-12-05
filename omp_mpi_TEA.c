@@ -31,25 +31,27 @@ int main(int argc, char** argv) {
 	
 	// Variables
 	double timeStart, timeEnd;
-	unsigned char* text_ptr = NULL;
 	int text_size;
 	int size_per_proc;
 
 	// Fill plaintext and key
 	int i;
-	uint32_t key[4] = {1, 1, 1, 1};
-	uint32_t text[TEXT_BYTES/4];
-	uint32_t text_decrypted[TEXT_BYTES/4];
-	uint32_t text_sub[TEXT_BYTES/4/NUM_PI];
-	uint32_t text_gold[TEXT_BYTES/4];
+	uint32_t key[4] = {1, 2, 3, 4};
+	//uint32_t text[TEXT_BYTES/4];
+	//uint32_t text_decrypted[TEXT_BYTES/4];
+	//uint32_t text_sub[TEXT_BYTES/4/NUM_PI];
+	//uint32_t text_gold[TEXT_BYTES/4];
+	uint32_t* text = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
+	uint32_t* text_decrypted = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
+	uint32_t* text_sub = malloc(sizeof(uint32_t) * TEXT_BYTES/4/NUM_PI);
+	uint32_t* text_gold = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
 	for (i = 0; i < TEXT_BYTES/4; i++){
-		text[i] = 4;
-		text_gold[i] = 4;
+		text[i] = i%128;
+		text_gold[i] = i%128;
 	}
 	
 	if(rank == MASTER){
 		//Load keys and text into master thread
-		text_ptr = (unsigned char*) (&(text[0]));
 		timeStart = MPI_Wtime();
 		text_size = TEXT_BYTES/4;
 		size_per_proc = text_size/NUM_PI;
@@ -66,6 +68,7 @@ int main(int argc, char** argv) {
 	//Scatter dimensions for input image from Master process
 	MPI_Scatter(text, size_per_proc, MPI_UNSIGNED, text_sub, size_per_proc,
 				MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);	
+
 	//plainEncrypt(text_sub, key, size_per_proc);
 	mpEncrypt(text_sub, key, size_per_proc);
 	//plainDecrypt(text_sub, key, size_per_proc);
@@ -77,10 +80,6 @@ int main(int argc, char** argv) {
 	
 	//MPI Barrier for Synchronisation
 	MPI_Barrier(MPI_COMM_WORLD);
-
-	//omp_set_num_threads(num_threads);
-
-	// Set up key and plaintext block
 
 	// Stop timer and verify
 	if (rank == MASTER){
