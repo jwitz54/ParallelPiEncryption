@@ -6,8 +6,7 @@
 #include <mpi.h>
 #include <time.h>
 
-#define TEXT_BYTES 1200000000
-#define chunk 4
+#define chunk 1
 #define NUM_PI 3
 #define MASTER 0
 
@@ -19,12 +18,42 @@ void plainEncrypt(uint32_t *text, uint32_t *key, int size);
 void plainDecrypt(uint32_t *text, uint32_t *key, int size);
 int verify(uint32_t *text, uint32_t *text_gold, int size);
 
+int size;
+int rank;
+
 int main(int argc, char** argv) {
-	
+
+	// Determine encryption or decryption
+	char* mode = argv[1];
+
+	// Open files
+	FILE *ifp, *ofp;
+	int size_bytes;
+	if (mode[0] == "-d"){ 
+		ifp = fopen("pt.txt", "r");
+		ofp = fopen("ct.txt", "w");
+	} else {
+		ifp = fopen("ct.txt", "r");
+		ofp = fopen("pt.txt", "w");
+	}
+	if (ifp == NULL) {
+		fprintf(stderr, "Can't open file\n");
+	}
+	if (ofp == NULL) {
+		fprintf(stderr, "Can't open file\n");
+	}
+	fseek(ifp, 0L, SEEK_END);	
+	size_bytes = ftell(ifp); 
+	rewind(ifp);
+
+	// Adjust size for padding purposes
+	remainder = size_bytes % NUM_PI;
+	if (remainder != 0){
+		size_bytes = size_bytes + (NUM_PI - remainder)
+	}
+
 	// Setup OpemMPI
 	MPI_Init(&argc, &argv);
-	int size;
-	int rank;
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	
@@ -33,26 +62,21 @@ int main(int argc, char** argv) {
 	int text_size;
 	int size_per_proc;
 
-	// Fill plaintext and key
+	// Allocate plaintext and key
 	int i;
 	uint32_t key[4] = {1, 2, 3, 4};
-	//uint32_t text[TEXT_BYTES/4];
-	//uint32_t text_decrypted[TEXT_BYTES/4];
-	//uint32_t text_sub[TEXT_BYTES/4/NUM_PI];
-	//uint32_t text_gold[TEXT_BYTES/4];
-	uint32_t* text = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
-	uint32_t* text_decrypted = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
-	uint32_t* text_sub = malloc(sizeof(uint32_t) * TEXT_BYTES/4/NUM_PI);
-	uint32_t* text_gold = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
-	for (i = 0; i < TEXT_BYTES/4; i++){
-		text[i] = i%128;
-		text_gold[i] = i%128;
-	}
+	uint32_t* text = calloc(size_bytes/4, sizeof(uint32_t));
+	uint32_t* text_decrypted = calloc(size_bytes/4, sizeof(uint32_t));
+	uint32_t* text_sub = malloc(sizeof(uint32_t) * size_bytes/4/NUM_PI);
+	uint32_t* text_gold = calloc(size_bytes/4, sizeof(uint32_t));
+
+	// Read text into array
+	fread(text, sizeof(int32_t), size, ifp);
 	
 	if(rank == MASTER){
 		//Load keys and text into master thread
 		timeStart = MPI_Wtime();
-		text_size = TEXT_BYTES/4;
+		text_size = size_bytes/4;
 		size_per_proc = text_size/NUM_PI;
 	}
 	
@@ -68,10 +92,13 @@ int main(int argc, char** argv) {
 	MPI_Scatter(text, size_per_proc, MPI_UNSIGNED, text_sub, size_per_proc,
 				MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);	
 
-	//plainEncrypt(text_sub, key, size_per_proc);
-	mpEncrypt(text_sub, key, size_per_proc);
-	//plainDecrypt(text_sub, key, size_per_proc);
-	mpDecrypt(text_sub, key, size_per_proc);
+	if (mode[0] == "-d"){ 
+		mpDecrypt(text_sub, key, size_per_proc);
+		//plainDecrypt(text_sub, key, size_per_proc);
+	} else {
+		mpEncrypt(text_sub, key, size_per_proc);
+		//plainEncrypt(text_sub, key, size_per_proc);
+	}
 	
 	// Gather results
 	MPI_Gather(text_sub, size_per_proc, MPI_UNSIGNED, text_decrypted, size_per_proc, MPI_UNSIGNED,
@@ -84,14 +111,13 @@ int main(int argc, char** argv) {
 	if (rank == MASTER){
 		timeEnd = MPI_Wtime();
 		printf("Time Elapsed: %f\n", (timeEnd-timeStart) );
-		if (verify(text_decrypted, text_gold, text_size) == 0){
+		if (verify(text_decrypted, text_gold) == 0){
 			printf("Incorrect plaintext\n");
 		} else {
 			printf("Correct plaintext\n");
 		}
 	}
 
-	MPI_Barrier(MPI_COMM_WORLD);
 	return 0;
 
 }
@@ -99,8 +125,7 @@ int main(int argc, char** argv) {
 int verify(uint32_t *text, uint32_t *text_gold, int size){
 	int i;
 	int result = 1;
-	for (i = 0; i < size; i++){
-		//printf("index: %d, text: %d, gold: %d\n", i, text[i], text_gold[i]);
+	for (i = 0; i < size; i += 2){
 		if (text[i] != text_gold[i]){
 			printf("index: %d, text: %d, gold: %d\n", i, text[i], text_gold[i]);
 			result = 0;

@@ -6,51 +6,52 @@
 #include <mpi.h>
 #include <time.h>
 
-#define TEXT_BYTES 1200000000
+#define TEXT_BYTES 12000
 #define chunk 4
+#define num_threads 4
 #define NUM_PI 3
 #define MASTER 0
 
 void encrypt (uint32_t* v, uint32_t* k);
 void decrypt (uint32_t* v, uint32_t* k);
-void mpEncrypt(uint32_t *text, uint32_t *key, int size);
-void mpDecrypt(uint32_t *text, uint32_t *key, int size);
+void mpEncrypt(uint32_t *text, uint32_t *key);
+void mpDecrypt(uint32_t *text, uint32_t *key);
 void plainEncrypt(uint32_t *text, uint32_t *key, int size);
 void plainDecrypt(uint32_t *text, uint32_t *key, int size);
-int verify(uint32_t *text, uint32_t *text_gold, int size);
+int verify(uint32_t *text, uint32_t *text_gold);
+
+int size;
+int rank;
 
 int main(int argc, char** argv) {
 	
 	// Setup OpemMPI
 	MPI_Init(&argc, &argv);
-	int size;
-	int rank;
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	printf("Size: %d\t Rank: %d\n", size, rank);
 	
 	// Variables
 	double timeStart, timeEnd;
+	unsigned char* text_ptr = NULL;
 	int text_size;
 	int size_per_proc;
 
 	// Fill plaintext and key
 	int i;
-	uint32_t key[4] = {1, 2, 3, 4};
-	//uint32_t text[TEXT_BYTES/4];
-	//uint32_t text_decrypted[TEXT_BYTES/4];
-	//uint32_t text_sub[TEXT_BYTES/4/NUM_PI];
-	//uint32_t text_gold[TEXT_BYTES/4];
-	uint32_t* text = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
-	uint32_t* text_decrypted = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
-	uint32_t* text_sub = malloc(sizeof(uint32_t) * TEXT_BYTES/4/NUM_PI);
-	uint32_t* text_gold = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
+	uint32_t key[4] = {1, 1, 1, 1};
+	uint32_t text[TEXT_BYTES/4];
+	uint32_t text_decrypted[TEXT_BYTES/4];
+	uint32_t text_sub[TEXT_BYTES/4/NUM_PI];
+	uint32_t text_gold[TEXT_BYTES/4];
 	for (i = 0; i < TEXT_BYTES/4; i++){
-		text[i] = i%128;
-		text_gold[i] = i%128;
+		text[i] = 4;
+		text_gold[i] = 4;
 	}
 	
 	if(rank == MASTER){
 		//Load keys and text into master thread
+		text_ptr = (unsigned char*) (&(text[0]));
 		timeStart = MPI_Wtime();
 		text_size = TEXT_BYTES/4;
 		size_per_proc = text_size/NUM_PI;
@@ -67,11 +68,8 @@ int main(int argc, char** argv) {
 	//Scatter dimensions for input image from Master process
 	MPI_Scatter(text, size_per_proc, MPI_UNSIGNED, text_sub, size_per_proc,
 				MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);	
-
-	//plainEncrypt(text_sub, key, size_per_proc);
-	mpEncrypt(text_sub, key, size_per_proc);
-	//plainDecrypt(text_sub, key, size_per_proc);
-	mpDecrypt(text_sub, key, size_per_proc);
+	plainEncrypt(text_sub, key, size_per_proc);
+	plainDecrypt(text_sub, key, size_per_proc);
 	
 	// Gather results
 	MPI_Gather(text_sub, size_per_proc, MPI_UNSIGNED, text_decrypted, size_per_proc, MPI_UNSIGNED,
@@ -80,27 +78,31 @@ int main(int argc, char** argv) {
 	//MPI Barrier for Synchronisation
 	MPI_Barrier(MPI_COMM_WORLD);
 
+	//omp_set_num_threads(num_threads);
+
+	// Set up key and plaintext block
+
 	// Stop timer and verify
 	if (rank == MASTER){
 		timeEnd = MPI_Wtime();
 		printf("Time Elapsed: %f\n", (timeEnd-timeStart) );
-		if (verify(text_decrypted, text_gold, text_size) == 0){
+		if (verify(text_decrypted, text_gold) == 0){
 			printf("Incorrect plaintext\n");
 		} else {
 			printf("Correct plaintext\n");
 		}
 	}
+	
+	MPI_Finalize();
 
-	MPI_Barrier(MPI_COMM_WORLD);
 	return 0;
 
 }
 
-int verify(uint32_t *text, uint32_t *text_gold, int size){
+int verify(uint32_t *text, uint32_t *text_gold){
 	int i;
 	int result = 1;
-	for (i = 0; i < size; i++){
-		//printf("index: %d, text: %d, gold: %d\n", i, text[i], text_gold[i]);
+	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
 		if (text[i] != text_gold[i]){
 			printf("index: %d, text: %d, gold: %d\n", i, text[i], text_gold[i]);
 			result = 0;
@@ -124,20 +126,18 @@ void plainDecrypt(uint32_t *text, uint32_t *key, int size){
 	}
 }
 
-void mpEncrypt(uint32_t *text, uint32_t *key, int size){
-	//omp_set_num_threads(4);
+void mpEncrypt(uint32_t *text, uint32_t *key){
 	int i;
-	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
-	for (i = 0; i < size; i += 2){
+	#pragma omp parallel for private(i) 
+	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
 		encrypt (&text[i], key);
 	}
 }
 
-void mpDecrypt(uint32_t *text, uint32_t *key, int size){
-	//omp_set_num_threads(4);
+void mpDecrypt(uint32_t *text, uint32_t *key){
 	int i;
-	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
-	for (i = 0; i < size; i += 2){
+	#pragma omp parallel for private(i)  
+	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
 		decrypt (&text[i], key);
 	}
 }
