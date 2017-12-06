@@ -5,13 +5,11 @@
 #include <omp.h>
 #include <mpi.h>
 #include <time.h>
-#include <string.h>
 
-#define TEXT_BYTES 240000
 #define chunk 4
 #define NUM_PI 3
+#defin NUM_THREADS 4
 #define MASTER 0
-#define NUM_ROUNDS 16
 
 void encrypt (uint32_t* v, uint32_t* k);
 void decrypt (uint32_t* v, uint32_t* k);
@@ -21,42 +19,69 @@ void plainEncrypt(uint32_t *text, uint32_t *key, int size);
 void plainDecrypt(uint32_t *text, uint32_t *key, int size);
 int verify(uint32_t *text, uint32_t *text_gold, int size);
 
+int size;
+int rank;
+
 int main(int argc, char** argv) {
+
+	// Determine encryption or decryption
+	char* mode = argv[1];
+
+	// Open files
+	FILE *ifp, *ofp;
+	int size_bytes;
 	
+	if (mode[0] == "-d"){ //decryption mode
+		ifp = fopen("pt.txt", "r");
+		ofp = fopen("ct.txt", "w");
+	} else {//encryption
+		ifp = fopen("ct.txt", "r");
+		ofp = fopen("pt.txt", "w");
+	}
+	if (ifp == NULL) { 
+		fprintf(stderr, "Can't open file\n");
+	}
+	if (ofp == NULL) {
+		fprintf(stderr, "Can't open file\n");
+	}
+	fseek(ifp, 0L, SEEK_END);	
+	size_bytes = ftell(ifp); 
+	rewind(ifp);
+
+	// Adjust size for padding purposes
+	remainder = size_bytes % (NUM_PI*4);
+	if (remainder != 0){
+		size_bytes = size_bytes + (NUM_PI*4 - remainder)
+	}
+	//size in integer #'s
+	int size32 = size_bytes/4
 
 	// Setup OpemMPI
-	MPI_Init(&argc, &argv);
-	int size;
-	int rank;
-	MPI_Comm_size(MPI_COMM_WORLD, &size);
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	//MPI_Init(&argc, &argv);
+	//MPI_Comm_size(MPI_COMM_WORLD, &size);
+	//MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	
 	// Variables
 	double timeStart, timeEnd;
 	int text_size;
 	int size_per_proc;
 
-	// Fill plaintext and key
+	// Allocate plaintext and key
 	int i;
 	uint32_t key[4] = {1, 2, 3, 4};
-	//uint32_t text[TEXT_BYTES/4];
-	//uint32_t text_decrypted[TEXT_BYTES/4];
-	//uint32_t text_sub[TEXT_BYTES/4/NUM_PI];
-	//uint32_t text_gold[TEXT_BYTES/4];
-	uint32_t* text = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
-	uint32_t* text_decrypted = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
-	uint32_t* text_encrypted = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
-	uint32_t* text_sub = malloc(sizeof(uint32_t) * TEXT_BYTES/4/NUM_PI);
-	uint32_t* text_gold = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
-	for (i = 0; i < TEXT_BYTES/4; i++){
-		text[i] = i%128;
-		text_gold[i] = i%128;
-	}
+	uint32_t* text = calloc(size32, sizeof(uint32_t));
+	uint32_t* text_decrypted = calloc(size32, sizeof(uint32_t));
+	uint32_t* text_encrypted = calloc(size32, sizeof(uint32_t));
+	uint32_t* text_sub = malloc(sizeof(uint32_t) * size32/NUM_PI);
+	uint32_t* text_gold = calloc(size32, sizeof(uint32_t));
+
+	// Read text into array
+	fread(text, sizeof(int32_t), size, ifp);
 	
 	if(rank == MASTER){
 		//Load keys and text into master thread
 		timeStart = MPI_Wtime();
-		text_size = TEXT_BYTES/4;
+		text_size = size_bytes/4;
 		size_per_proc = text_size/NUM_PI;
 	}
 	
@@ -67,54 +92,31 @@ int main(int argc, char** argv) {
 	
 	//MPI Barrier for Synchronisation
 	MPI_Barrier(MPI_COMM_WORLD);
-	
-	if(rank == MASTER){ 
-		MPI_Send( (text+size_per_proc), size_per_proc, MPI_UNSIGNED, 1, 0 , MPI_COMM_WORLD );
-		MPI_Send( (text+2*size_per_proc), size_per_proc, MPI_UNSIGNED, 2, 0, MPI_COMM_WORLD );
-		memcpy(text_sub, text, size_per_proc*4);
-	}	
-	if(rank == 1 || rank == 2){
-		MPI_Recv( text_sub, size_per_proc, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	}
-	
+		
 	//Scatter dimensions for input image from Master process
-	//MPI_Scatter(text, size_per_proc, MPI_UNSIGNED, text_sub, size_per_proc,
-	//			MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);	
+	MPI_Scatter(text, size_per_proc, MPI_UNSIGNED, text_sub, size_per_proc,
+				MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);	
 
-	//plainEncrypt(text_sub, key, size_per_proc);
-	for(i=0; i<NUM_ROUNDS; i++){
+	if (mode[0] == "-d"){ 
+		mpDecrypt(text_sub, key, size_per_proc);
+		//plainDecrypt(text_sub, key, size_per_proc);
+	} else {
 		mpEncrypt(text_sub, key, size_per_proc);
-	}
-	//plainDecrypt(text_sub, key, size_per_proc);
-	//mpDecrypt(text_sub, key, size_per_proc);
-	
-	if(rank!=MASTER){
-		MPI_Send(text_sub, size_per_proc, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD);
+		//plainEncrypt(text_sub, key, size_per_proc);
 	}
 	
-	//MPI Barrier for Synchronisation
-	//MPI_Barrier(MPI_COMM_WORLD);	
-	
-	if(rank == MASTER){
-		memcpy(text_encrypted, text_sub, size_per_proc*4);
-		MPI_Recv( (text_encrypted + size_per_proc), size_per_proc, MPI_UNSIGNED, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		MPI_Recv( (text_encrypted + 2*size_per_proc), size_per_proc, MPI_UNSIGNED, 2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	}
 	// Gather results
-	//MPI_Gather(text_sub, size_per_proc, MPI_UNSIGNED, text_decrypted, size_per_proc, MPI_UNSIGNED,
-	//			MASTER, MPI_COMM_WORLD);
+	MPI_Gather(text_sub, size_per_proc, MPI_UNSIGNED, text_decrypted, size_per_proc, MPI_UNSIGNED,
+				MASTER, MPI_COMM_WORLD);
 	
 	//MPI Barrier for Synchronisation
-	//MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(MPI_COMM_WORLD);
 
 	// Stop timer and verify
 	if (rank == MASTER){
 		timeEnd = MPI_Wtime();
 		printf("Time Elapsed: %f\n", (timeEnd-timeStart) );
-		for(i=0; i<NUM_ROUNDS; i++){
-			mpDecrypt(text_encrypted, key, TEXT_BYTES/4);
-		}
-		if (verify(text_encrypted, text_gold, text_size) == 0){
+		if (verify(text_decrypted, text_gold) == 0){
 			printf("Incorrect plaintext\n");
 		} else {
 			printf("Correct plaintext\n");
@@ -122,7 +124,6 @@ int main(int argc, char** argv) {
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	MPI_Finalize();
 	return 0;
 
 }
@@ -130,8 +131,7 @@ int main(int argc, char** argv) {
 int verify(uint32_t *text, uint32_t *text_gold, int size){
 	int i;
 	int result = 1;
-	for (i = 0; i < size; i++){
-		//printf("index: %d, text: %d, gold: %d\n", i, text[i], text_gold[i]);
+	for (i = 0; i < size; i += 2){
 		if (text[i] != text_gold[i]){
 			printf("index: %d, text: %d, gold: %d\n", i, text[i], text_gold[i]);
 			result = 0;
@@ -160,9 +160,6 @@ void mpEncrypt(uint32_t *text, uint32_t *key, int size){
 	int i;
 	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
 	for (i = 0; i < size; i += 2){
-		//~ if (omp_get_thread_num() == 0){
-			//~ printf("num threads:%d\n", omp_get_num_threads());
-		//~ }
 		encrypt (&text[i], key);
 	}
 }

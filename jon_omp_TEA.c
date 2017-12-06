@@ -6,10 +6,10 @@
 #include <time.h>
 
 //test
-#define TEXT_BYTES 240000000
+#define TEXT_BYTES 240000
 #define chunk 4
 #define MASTER 0
-
+#define NUM_ROUNDS 16
 void encrypt (uint32_t* v, uint32_t* k);
 void decrypt (uint32_t* v, uint32_t* k);
 void mpEncrypt(uint32_t *text, uint32_t *key);
@@ -47,10 +47,14 @@ int main() {
 	
 	printf("Standard Implementation\n");
 	start_time_standard = omp_get_wtime();
-	plainEncrypt(text, key);
-	
+	for(int i=0; i<NUM_ROUNDS; i++){
+		plainEncrypt(text, key);
+	}
 	printf("Time to encrypt: %f\n", (omp_get_wtime() - start_time_standard) );
-	plainDecrypt(text, key);
+	
+	for(int i=0; i<NUM_ROUNDS; i++){
+		plainDecrypt(text, key);
+	}
 	if (verify(text, text_gold) == 0){
 		printf("Incorrect plaintext\n");
 	} else {
@@ -60,14 +64,14 @@ int main() {
 	printf("OpenMP Implementation\n");
 	// Perform and time encryption
 	start_time_omp = omp_get_wtime();
-	mpEncrypt(text, key);
-	
+	//Perform NUM_ROUNDS of encryption
+	for(int i=0; i<NUM_ROUNDS; i++){
+		mpEncrypt(text, key);
+	}
 	printf("Time to encrypt: %f\n", (omp_get_wtime() - start_time_omp) );
-	
-
-	// Calculate time and verify
-	//usecs = end.tv_usec - start.tv_usec;
-	mpDecrypt(text, key);
+	for(int i=0; i<NUM_ROUNDS; i++){
+		mpDecrypt(text, key);
+	}
 	if (verify(text, text_gold) == 0){
 		printf("Incorrect plaintext\n");
 	} else {

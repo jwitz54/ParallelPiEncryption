@@ -6,8 +6,9 @@
 #include <mpi.h>
 #include <time.h>
 
-#define chunk 1
+#define chunk 4
 #define NUM_PI 3
+#defin NUM_THREADS 4
 #define MASTER 0
 
 void encrypt (uint32_t* v, uint32_t* k);
@@ -23,25 +24,46 @@ int rank;
 
 int main(int argc, char** argv) {
 
+
 	// Determine encryption or decryption
 	char* mode = argv[1];
+	//How many rounds you want to decrypt/encrypt
+	int* rounds = argv[2];
+	
+	//get input key
+	char* input_key = argv[3];
+	
+	//file path to encryption/decryption
+	char* input_file_path = argv[4];
+	
+	//get length of given key
+	int k=0;
+	int len_key = 0;
+	while(input_key[k]!='!'){
+		len_key++;
+	}
+	
 
 	// Open files
 	FILE *ifp, *ofp;
 	int size_bytes;
-	if (mode[0] == "-d"){ 
-		ifp = fopen("pt.txt", "r");
-		ofp = fopen("ct.txt", "w");
-	} else {
-		ifp = fopen("ct.txt", "r");
-		ofp = fopen("pt.txt", "w");
+	
+	if (mode[0] == "-d"){ //decryption mode
+		ifp = fopen(input_file_path, "r");
+		ofp = fopen("output.txt", "w");
+		//ofp = fopen("ct.txt", "w");
+	} else {//encryption
+		ifp = fopen(input_file_path, "r");
+		ofp = fopen("output.txt", "w");
+		//ofp = fopen("pt.txt", "w");
 	}
-	if (ifp == NULL) {
+	if (ifp == NULL) { 
 		fprintf(stderr, "Can't open file\n");
 	}
 	if (ofp == NULL) {
 		fprintf(stderr, "Can't open file\n");
 	}
+	//GET SIZE OF INPUT FILE
 	fseek(ifp, 0L, SEEK_END);	
 	size_bytes = ftell(ifp); 
 	rewind(ifp);
@@ -51,12 +73,16 @@ int main(int argc, char** argv) {
 	if (remainder != 0){
 		size_bytes = size_bytes + (NUM_PI*4 - remainder)
 	}
+	//size in integer #'s
 	int size32 = size_bytes/4
+
+
 
 	// Setup OpemMPI
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	
 	
 	// Variables
 	double timeStart, timeEnd;
@@ -65,16 +91,19 @@ int main(int argc, char** argv) {
 
 	// Allocate plaintext and key
 	int i;
-	uint32_t key[4] = {1, 2, 3, 4};
+	//uint32_t key[4] = {1, 2, 3, 4};
+	uint32_t* key = calloc(4, sizeof(uint32_t));
+	memcpy(key, input_key, len_key);
 	uint32_t* text = calloc(size32, sizeof(uint32_t));
-	uint32_t* text_decrypted = calloc(size32, sizeof(uint32_t));
-	uint32_t* text_encrypted = calloc(size32, sizeof(uint32_t));
+	uint32_t* processed_text = calloc(size32, sizeof(uint32_t));
+	//uint32_t* text_encrypted = calloc(size32, sizeof(uint32_t));
 	uint32_t* text_sub = malloc(sizeof(uint32_t) * size32/NUM_PI);
 	uint32_t* text_gold = calloc(size32, sizeof(uint32_t));
 
 	// Read text into array
-	fread(text, sizeof(int32_t), size, ifp);
+	fread(text, sizeof(int32_t), size32, ifp);
 	
+	//SETS TIME AND SIZE/PROC
 	if(rank == MASTER){
 		//Load keys and text into master thread
 		timeStart = MPI_Wtime();
@@ -89,28 +118,62 @@ int main(int argc, char** argv) {
 	
 	//MPI Barrier for Synchronisation
 	MPI_Barrier(MPI_COMM_WORLD);
+	
+	//SENDING DATA OUT ON MASTER
+	if(rank == MASTER){ 
+		MPI_Send( (text+size_per_proc), size_per_proc, MPI_UNSIGNED, 1, 0 , MPI_COMM_WORLD );
+		MPI_Send( (text+2*size_per_proc), size_per_proc, MPI_UNSIGNED, 2, 0, MPI_COMM_WORLD );
+		memcpy(text_sub, text, size_per_proc*4);
+	}
+	//RECEIVING DATA ON SLAVES	
+	if(rank == 1 || rank == 2){
+		MPI_Recv( text_sub, size_per_proc, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);	
 		
 	//Scatter dimensions for input image from Master process
-	MPI_Scatter(text, size_per_proc, MPI_UNSIGNED, text_sub, size_per_proc,
-				MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);	
+	//MPI_Scatter(text, size_per_proc, MPI_UNSIGNED, text_sub, size_per_proc,
+	//			MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);	
 
+
+	//DETERMINE WHETHER TO DECRYPT OR ENCRYPT BASED ON ARGUMENT GIVEN
 	if (mode[0] == "-d"){ 
-		mpDecrypt(text_sub, key, size_per_proc);
+		for(i=0; i<rounds; i++){
+			mpDecrypt(text_sub, key, size_per_proc);
+		}
 		//plainDecrypt(text_sub, key, size_per_proc);
 	} else {
-		mpEncrypt(text_sub, key, size_per_proc);
+		for(i=0; i<rounds; i++){
+			mpEncrypt(text_sub, key, size_per_proc);
+		}
 		//plainEncrypt(text_sub, key, size_per_proc);
 	}
+
+	//SEND DATA BACK TO MASTER PI
+	if(rank!=MASTER){
+		MPI_Send(text_sub, size_per_proc, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD);
+	}
+	
+	//PUT DATA BACK TOGETHER ON MASTER PI
+	if(rank == MASTER){
+		memcpy(processed_text, text_sub, size_per_proc*4);
+		MPI_Recv( (processed_text + size_per_proc), size_per_proc, MPI_UNSIGNED, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Recv( (processed_text + 2*size_per_proc), size_per_proc, MPI_UNSIGNED, 2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	}	
 	
 	// Gather results
-	MPI_Gather(text_sub, size_per_proc, MPI_UNSIGNED, text_decrypted, size_per_proc, MPI_UNSIGNED,
-				MASTER, MPI_COMM_WORLD);
+	//MPI_Gather(text_sub, size_per_proc, MPI_UNSIGNED, processed_text, size_per_proc, MPI_UNSIGNED,
+	//			MASTER, MPI_COMM_WORLD);
 	
 	//MPI Barrier for Synchronisation
-	MPI_Barrier(MPI_COMM_WORLD);
+	//MPI_Barrier(MPI_COMM_WORLD);
 
 	// Stop timer and verify
 	if (rank == MASTER){
+		//write processed_text to output file
+		
+		fwrite(processed_text, sizeof(uint32_t), size32, ofp);
+		fclose(ofp);
+		
+		/*
 		timeEnd = MPI_Wtime();
 		printf("Time Elapsed: %f\n", (timeEnd-timeStart) );
 		if (verify(text_decrypted, text_gold) == 0){
@@ -118,9 +181,11 @@ int main(int argc, char** argv) {
 		} else {
 			printf("Correct plaintext\n");
 		}
+		*/
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Finalize();
 	return 0;
 
 }
