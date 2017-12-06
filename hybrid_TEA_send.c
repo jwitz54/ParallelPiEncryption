@@ -7,7 +7,7 @@
 #include <time.h>
 #include <string.h>
 
-#define TEXT_BYTES 240000
+#define TEXT_BYTES 240000000
 #define chunk 4
 #define NUM_PI 3
 #define MASTER 0
@@ -66,6 +66,8 @@ int main(int argc, char** argv) {
 	//MPI Barrier for Synchronisation
 	MPI_Barrier(MPI_COMM_WORLD);
 	
+	
+/* Send/Recv Protocol
 	if(rank == MASTER){ 
 		MPI_Send( (text+size_per_proc), size_per_proc, MPI_UNSIGNED, 1, 0 , MPI_COMM_WORLD );
 		MPI_Send( (text+2*size_per_proc), size_per_proc, MPI_UNSIGNED, 2, 0, MPI_COMM_WORLD );
@@ -74,16 +76,18 @@ int main(int argc, char** argv) {
 	if(rank == 1 || rank == 2){
 		MPI_Recv( text_sub, size_per_proc, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
+*/
 	
 	//Scatter dimensions for input image from Master process
-	//MPI_Scatter(text, size_per_proc, MPI_UNSIGNED, text_sub, size_per_proc,
-	//			MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);	
+	MPI_Scatter(text, size_per_proc, MPI_UNSIGNED, text_sub, size_per_proc,
+				MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);	
 
 	//plainEncrypt(text_sub, key, size_per_proc);
 	mpEncrypt(text_sub, key, size_per_proc);
 	//plainDecrypt(text_sub, key, size_per_proc);
 	//mpDecrypt(text_sub, key, size_per_proc);
-	
+
+/*	Send/Recv Protocol
 	if(rank!=MASTER){
 		MPI_Send(text_sub, size_per_proc, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD);
 	}
@@ -96,9 +100,28 @@ int main(int argc, char** argv) {
 		MPI_Recv( (text_encrypted + size_per_proc), size_per_proc, MPI_UNSIGNED, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		MPI_Recv( (text_encrypted + 2*size_per_proc), size_per_proc, MPI_UNSIGNED, 2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
+*/	
+/*
+ * DECRYPTION SECTION
+ * 	
+	mpDecrypt(text_sub, key, size_per_proc);
+	if(rank!=MASTER){
+		MPI_Send(text_sub, size_per_proc, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD);
+	}
+
+
+	if(rank == MASTER){
+		memcpy(text_decrypted, text_sub, size_per_proc*4);
+		MPI_Recv( (text_decrypted + size_per_proc), size_per_proc, MPI_UNSIGNED, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Recv( (text_encrypted + 2*size_per_proc), size_per_proc, MPI_UNSIGNED, 2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	}
+*/
+	
+		
 	// Gather results
-	//MPI_Gather(text_sub, size_per_proc, MPI_UNSIGNED, text_decrypted, size_per_proc, MPI_UNSIGNED,
-	//			MASTER, MPI_COMM_WORLD);
+	MPI_Gather(text_sub, size_per_proc, MPI_UNSIGNED, text_encrypted, size_per_proc, MPI_UNSIGNED,
+				MASTER, MPI_COMM_WORLD);
+	
 	
 	//MPI Barrier for Synchronisation
 	//MPI_Barrier(MPI_COMM_WORLD);

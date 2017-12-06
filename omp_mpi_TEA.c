@@ -6,7 +6,7 @@
 #include <mpi.h>
 #include <time.h>
 
-#define TEXT_BYTES 240000000
+#define TEXT_BYTES 24000000
 #define chunk 4
 #define NUM_PI 3
 #define MASTER 0

@@ -48,9 +48,9 @@ int main() {
 	printf("Standard Implementation\n");
 	start_time_standard = omp_get_wtime();
 	plainEncrypt(text, key);
-	plainDecrypt(text, key);
-	printf("Time to encrypt and decrypt: %f\n", (omp_get_wtime() - start_time_standard) );
 	
+	printf("Time to encrypt: %f\n", (omp_get_wtime() - start_time_standard) );
+	plainDecrypt(text, key);
 	if (verify(text, text_gold) == 0){
 		printf("Incorrect plaintext\n");
 	} else {
@@ -61,13 +61,13 @@ int main() {
 	// Perform and time encryption
 	start_time_omp = omp_get_wtime();
 	mpEncrypt(text, key);
-	mpDecrypt(text, key);
-	printf("Time to encrypt and decrypt: %f\n", (omp_get_wtime() - start_time_omp) );
+	
+	printf("Time to encrypt: %f\n", (omp_get_wtime() - start_time_omp) );
 	
 
 	// Calculate time and verify
 	//usecs = end.tv_usec - start.tv_usec;
-	
+	mpDecrypt(text, key);
 	if (verify(text, text_gold) == 0){
 		printf("Incorrect plaintext\n");
 	} else {
