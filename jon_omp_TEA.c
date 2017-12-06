@@ -5,7 +5,8 @@
 #include <omp.h>
 #include <time.h>
 
-#define TEXT_BYTES 12000
+//test
+#define TEXT_BYTES 240000000
 #define chunk 4
 #define MASTER 0
 
@@ -23,12 +24,16 @@ int main() {
 
 	// Set up key and plaintext block
 	int i;
-	uint32_t key[4] = {1, 1, 1, 1};
-	uint32_t text[TEXT_BYTES/4];
-	uint32_t text_gold[TEXT_BYTES/4];
+	uint32_t key[4] = {1, 2, 3, 4};
+	uint32_t* text = (uint32_t*) malloc(sizeof(uint32_t) * TEXT_BYTES/4);
+	//uint32_t* text_decrypted = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
+	//uint32_t* text_sub = malloc(sizeof(uint32_t) * TEXT_BYTES/4/NUM_PI);
+	uint32_t* text_gold = (uint32_t*) malloc(sizeof(uint32_t) * TEXT_BYTES/4);
+	//uint32_t text[TEXT_BYTES/4];
+	//uint32_t text_gold[TEXT_BYTES/4];
 	for (i = 0; i < TEXT_BYTES/4; i++){
-		text[i] = 4;
-		text_gold[i] = 4;
+		text[i] = i%128;
+		text_gold[i] = i%128;
 	}	
 
 
@@ -77,7 +82,7 @@ int main() {
 int verify(uint32_t *text, uint32_t *text_gold){
 	int i;
 	int result = 1;
-	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
+	for (i = 0; i < TEXT_BYTES/4; i++){
 		if (text[i] != text_gold[i]){
 			printf("index: %d, text: %d, gold: %d", i, text[i], text_gold[i]);
 			result = 0;
@@ -89,14 +94,14 @@ int verify(uint32_t *text, uint32_t *text_gold){
 
 void plainEncrypt(uint32_t *text, uint32_t *key){
 	int i;
-	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
+	for (i = 0; i < TEXT_BYTES/4; i += 2){
 		encrypt (&text[i], key);
 	}
 }
 
 void plainDecrypt(uint32_t *text, uint32_t *key){
 	int i;
-	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
+	for (i = 0; i < TEXT_BYTES/4; i += 2){
 		decrypt (&text[i], key);
 	}
 }
@@ -106,7 +111,7 @@ void mpEncrypt(uint32_t *text, uint32_t *key){
 	int i;
 	//#pragma omp parallel for private(i) 
 	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
-	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
+	for (i = 0; i < TEXT_BYTES/4; i += 2){
 		encrypt (&text[i], key);
 	}
 	
@@ -117,7 +122,7 @@ void mpDecrypt(uint32_t *text, uint32_t *key){
 	int i;
 	//#pragma omp parallel for private(i)  
 	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
-	for (i = 0; i < TEXT_BYTES/4/2; i += 2){
+	for (i = 0; i < TEXT_BYTES/4; i += 2){
 	
 		decrypt (&text[i], key);
 	}
