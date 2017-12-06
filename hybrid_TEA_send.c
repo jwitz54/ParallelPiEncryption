@@ -7,7 +7,7 @@
 #include <time.h>
 #include <string.h>
 
-#define TEXT_BYTES 240000000
+#define TEXT_BYTES 240000
 #define chunk 4
 #define NUM_PI 3
 #define MASTER 0
@@ -43,6 +43,7 @@ int main(int argc, char** argv) {
 	//uint32_t text_gold[TEXT_BYTES/4];
 	uint32_t* text = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
 	uint32_t* text_decrypted = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
+	uint32_t* text_encrypted = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
 	uint32_t* text_sub = malloc(sizeof(uint32_t) * TEXT_BYTES/4/NUM_PI);
 	uint32_t* text_gold = malloc(sizeof(uint32_t) * TEXT_BYTES/4);
 	for (i = 0; i < TEXT_BYTES/4; i++){
@@ -68,7 +69,6 @@ int main(int argc, char** argv) {
 	if(rank == MASTER){ 
 		MPI_Send( (text+size_per_proc), size_per_proc, MPI_UNSIGNED, 1, 0 , MPI_COMM_WORLD );
 		MPI_Send( (text+2*size_per_proc), size_per_proc, MPI_UNSIGNED, 2, 0, MPI_COMM_WORLD );
-		
 		memcpy(text_sub, text, size_per_proc*4);
 	}	
 	if(rank == 1 || rank == 2){
@@ -82,25 +82,19 @@ int main(int argc, char** argv) {
 	//plainEncrypt(text_sub, key, size_per_proc);
 	mpEncrypt(text_sub, key, size_per_proc);
 	//plainDecrypt(text_sub, key, size_per_proc);
-	mpDecrypt(text_sub, key, size_per_proc);
-	
-
-	
+	//mpDecrypt(text_sub, key, size_per_proc);
 	
 	if(rank!=MASTER){
-		
-		MPI_SEND(text_sub, size_per_proc, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD);
-		
+		MPI_Send(text_sub, size_per_proc, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD);
 	}
 	
 	//MPI Barrier for Synchronisation
 	//MPI_Barrier(MPI_COMM_WORLD);	
 	
 	if(rank == MASTER){
-		memcpy(text_decrypted, text_sub, size_per_proc*4);
-		MPI_Recv( (text_decrypted + size_per_proc), size_per_proc, MPI_UNSIGNED, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		MPI_Recv( (text_decrypted + 2*size_per_proc), size_per_proc, MPI_UNSIGNED, 2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		
+		memcpy(text_encrypted, text_sub, size_per_proc*4);
+		MPI_Recv( (text_encrypted + size_per_proc), size_per_proc, MPI_UNSIGNED, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Recv( (text_encrypted + 2*size_per_proc), size_per_proc, MPI_UNSIGNED, 2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}
 	// Gather results
 	//MPI_Gather(text_sub, size_per_proc, MPI_UNSIGNED, text_decrypted, size_per_proc, MPI_UNSIGNED,
@@ -113,7 +107,8 @@ int main(int argc, char** argv) {
 	if (rank == MASTER){
 		timeEnd = MPI_Wtime();
 		printf("Time Elapsed: %f\n", (timeEnd-timeStart) );
-		if (verify(text_decrypted, text_gold, text_size) == 0){
+		mpDecrypt(text_encrypted, key, TEXT_BYTES/4);
+		if (verify(text_encrypted, text_gold, text_size) == 0){
 			printf("Incorrect plaintext\n");
 		} else {
 			printf("Correct plaintext\n");

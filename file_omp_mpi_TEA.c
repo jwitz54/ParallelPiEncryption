@@ -47,10 +47,11 @@ int main(int argc, char** argv) {
 	rewind(ifp);
 
 	// Adjust size for padding purposes
-	remainder = size_bytes % NUM_PI;
+	remainder = size_bytes % (NUM_PI*4);
 	if (remainder != 0){
-		size_bytes = size_bytes + (NUM_PI - remainder)
+		size_bytes = size_bytes + (NUM_PI*4 - remainder)
 	}
+	int size32 = size_bytes/4
 
 	// Setup OpemMPI
 	MPI_Init(&argc, &argv);
@@ -65,10 +66,11 @@ int main(int argc, char** argv) {
 	// Allocate plaintext and key
 	int i;
 	uint32_t key[4] = {1, 2, 3, 4};
-	uint32_t* text = calloc(size_bytes/4, sizeof(uint32_t));
-	uint32_t* text_decrypted = calloc(size_bytes/4, sizeof(uint32_t));
-	uint32_t* text_sub = malloc(sizeof(uint32_t) * size_bytes/4/NUM_PI);
-	uint32_t* text_gold = calloc(size_bytes/4, sizeof(uint32_t));
+	uint32_t* text = calloc(size32, sizeof(uint32_t));
+	uint32_t* text_decrypted = calloc(size32, sizeof(uint32_t));
+	uint32_t* text_encrypted = calloc(size32, sizeof(uint32_t));
+	uint32_t* text_sub = malloc(sizeof(uint32_t) * size32/NUM_PI);
+	uint32_t* text_gold = calloc(size32, sizeof(uint32_t));
 
 	// Read text into array
 	fread(text, sizeof(int32_t), size, ifp);
@@ -118,6 +120,7 @@ int main(int argc, char** argv) {
 		}
 	}
 
+	MPI_Barrier(MPI_COMM_WORLD);
 	return 0;
 
 }
