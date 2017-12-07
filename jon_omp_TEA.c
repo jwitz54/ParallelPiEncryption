@@ -9,7 +9,7 @@
 #define TEXT_BYTES 240000
 #define chunk 4
 #define MASTER 0
-#define NUM_ROUNDS 16
+#define NUM_ROUNDS 8
 void encrypt (uint32_t* v, uint32_t* k);
 void decrypt (uint32_t* v, uint32_t* k);
 void mpEncrypt(uint32_t *text, uint32_t *key);

@@ -14,7 +14,8 @@ def collect_input(socket):
 
 working_dir = "/tmp/"
 #host = "127.0.0.1" #ip of raspberry pi, local host for now
-host='localhost'
+host = '10.148.13.142'
+#host='localhost'
 port = 8765
 
 
@@ -57,8 +58,8 @@ while True:
 	print("Receiving: %s Size: %d\n" % (file_name, file_size))
 	#keep reading and writing to file until all finished reading everything
 	while file_size > 0:
-
-		print("Writing file")
+		#print("#\n")
+		#print("Writing file")
 		#check size of file, read # of appropriate bytes if less than 1024, otherwise keep reading bytes
 		if file_size<1024:
 			work_file = client.recv(file_size)
