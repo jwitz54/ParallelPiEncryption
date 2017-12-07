@@ -75,22 +75,24 @@ while True:
 	#perform encryption on file
 	if(int(server_mode)==0):
 		print("Running encryption for %s rounds with key: %s\n" % (num_rounds, input_key))
+		os.system("mpirun --hostfile machinefile -np 3 ./file_hybrid_tea 0 " + num_rounds + " " + input_key + " " + working_dir+file_name)
+		processed_file_name = "output_enc.txt"
 		#os.system("echo 'running encryption/decryption algorithm %s' " % "broooo" )
 	#perform decryption on file
 	elif(int(server_mode)==1):
 		print("Running decryption for %s rounds with key: %s\n" % (num_rounds, input_key))
+		os.system("mpirun --hostfile machinefile -np 3 ./file_hybrid_tea 1 " + num_rounds + " " + input_key + " " + working_dir+file_name)
+		processed_file_name = "output_dec.txt"
 	client.send("FINISHED_PROCESSING")
 
 	#print(collect_input(client))
 
-	#send processed files back (NEED TO CHANGE THIS DEPENDING ON WHAT IS OUTPUT FROM C CODE)
-	processed_file_name = file_name
 
 	#for now there is no encrypted so sending same file back to test
 	processed_file_size = str(os.stat(working_dir + processed_file_name).st_size)
 	message = processed_file_size + '\n'
 	client.send(message)
-	file_to_send = open(working_dir + file_name, "rb")
+	file_to_send = open(working_dir + processed_file_name, "rb")
 	processed_file_size = int(processed_file_size)
 	print "Sending proccessed file back\n"
 	while processed_file_size > 0:
@@ -100,7 +102,7 @@ while True:
 
 	print "Sent Processed Files Back"
 	print("Removing Files Sent From Client")
-	os.system("rm " + working_dir+file_name)
+	#os.system("rm " + working_dir+file_name)
 
 
 	client.close()

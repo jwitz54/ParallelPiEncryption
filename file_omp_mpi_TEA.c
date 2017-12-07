@@ -71,11 +71,11 @@ int main(int argc, char** argv) {
 		
 		if (mode == 0){ //encryption mode
 			ifp = fopen(input_file_path, "r");
-			ofp = fopen("output_enc.txt", "w");
+			ofp = fopen("/tmp/output_enc.txt", "w");
 			//ofp = fopen("ct.txt", "w");
 		}else if (mode == 1) {//decryption
 			ifp = fopen(input_file_path, "r");
-			ofp = fopen("output_dec.txt", "w");
+			ofp = fopen("/tmp/output_dec.txt", "w");
 			//ofp = fopen("pt.txt", "w");
 		}
 		//CHECK IF INPUT FILE PATH IS VALID
