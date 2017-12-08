@@ -6,7 +6,7 @@
 #include <time.h>
 
 //test
-#define TEXT_BYTES 240000
+#define TEXT_BYTES 2400000
 #define chunk 4
 #define MASTER 0
 #define NUM_ROUNDS 8

@@ -7,7 +7,7 @@
 #include <time.h>
 #include <string.h>
 
-#define chunk 4
+#define chunk 1
 #define NUM_PI 3
 #define NUM_THREADS 4
 #define MASTER 0
@@ -18,7 +18,7 @@ void mpEncrypt(uint32_t *text, uint32_t *key, int size);
 void mpDecrypt(uint32_t *text, uint32_t *key, int size);
 void plainEncrypt(uint32_t *text, uint32_t *key, int size);
 void plainDecrypt(uint32_t *text, uint32_t *key, int size);
-int verify(uint32_t *text, uint32_t *text_gold, int size);
+//int verify(uint32_t *text, uint32_t *text_gold, int size);
 
 int size;
 int rank;
@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
 	uint32_t* key = calloc(4, sizeof(uint32_t));
 	uint32_t* text; 
 	uint32_t* processed_text;
-	uint32_t* text_gold;
+	//uint32_t* text_gold;
 	
 	if(rank == MASTER){
 		//file path to encryption/decryption
@@ -72,11 +72,11 @@ int main(int argc, char** argv) {
 		if (mode == 0){ //encryption mode
 			ifp = fopen(input_file_path, "r");
 			ofp = fopen("/tmp/output_enc.txt", "w");
-			//ofp = fopen("ct.txt", "w");
+			
 		}else if (mode == 1) {//decryption
 			ifp = fopen(input_file_path, "r");
 			ofp = fopen("/tmp/output_dec.txt", "w");
-			//ofp = fopen("pt.txt", "w");
+			
 		}
 		//CHECK IF INPUT FILE PATH IS VALID
 		if (ifp == NULL) { 
@@ -94,18 +94,18 @@ int main(int argc, char** argv) {
 		rewind(ifp);
 			
 		// Adjust size for padding purposes
-		int remainder = size_bytes % (NUM_PI*4);
+		int remainder = size_bytes % (NUM_PI*4*2);
 		if (remainder != 0){
-			size_bytes = size_bytes + (NUM_PI*4 - remainder);
+			size_bytes = size_bytes + (NUM_PI*4*2 - remainder);
 		}
 		//size in integer #'s
 		size32 = size_bytes/4;
-		
 		text = calloc(size32, sizeof(uint32_t));
 		processed_text = calloc(size32, sizeof(uint32_t));
-		text_gold = calloc(size32, sizeof(uint32_t));
+		//text_gold = calloc(size32, sizeof(uint32_t));
 		
-		fread(text, sizeof(int32_t), size32, ifp);
+		//read in input file into text
+		fread(text, sizeof(int32_t), original_size/4, ifp);
 		memcpy(key, input_key, len_key);
 		text_size = size_bytes/4;
 		size_per_proc = text_size/NUM_PI;
@@ -120,6 +120,8 @@ int main(int argc, char** argv) {
 	MPI_Bcast(&size32, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
 	MPI_Bcast(&text_size, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
 	MPI_Bcast(&size_per_proc, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
+	//MPI_Bcast(&rounds, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
+	//Allocate memory for text_sub
 	uint32_t* text_sub = malloc(sizeof(uint32_t) * size32/NUM_PI);
 	
 	//MPI Barrier for Synchronisation
@@ -147,17 +149,18 @@ int main(int argc, char** argv) {
 		//printf("Encrypting File \n");
 		
 		for(i=0; i<rounds; i++){
+			//plainEncrypt(text_sub, key, size_per_proc);
+			//printf("textsub: %x key: %x rank: %d size: %d\n", text_sub, key, rank, size_per_proc);
 			mpEncrypt(text_sub, key, size_per_proc);
-			//mpDecrypt(text_sub, key, size_per_proc);
+			
 		}
-		//plainDecrypt(text_sub, key, size_per_proc);
+		
 	}else if(mode == 1) {
 		//printf("Decrypting File\n");
 		
 		for(i=0; i<rounds; i++){
 			mpDecrypt(text_sub, key, size_per_proc);
 		}
-		//plainEncrypt(text_sub, key, size_per_proc);
 	}
 
 	//SEND DATA BACK TO MASTER PI
@@ -195,7 +198,7 @@ int main(int argc, char** argv) {
 	return 0;
 
 }
-
+/*
 int verify(uint32_t *text, uint32_t *text_gold, int size){
 	int i;
 	int result = 1;
@@ -208,6 +211,7 @@ int verify(uint32_t *text, uint32_t *text_gold, int size){
 	}
 	return result;
 }
+*/
 
 void plainEncrypt(uint32_t *text, uint32_t *key, int size){
 	int i;
@@ -226,6 +230,7 @@ void plainDecrypt(uint32_t *text, uint32_t *key, int size){
 void mpEncrypt(uint32_t *text, uint32_t *key, int size){
 	//omp_set_num_threads(4);
 	int i;
+	//printf("index ptr: %x\n", &i);
 	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
 	for (i = 0; i < size; i += 2){
 		encrypt (&text[i], key);
@@ -242,6 +247,7 @@ void mpDecrypt(uint32_t *text, uint32_t *key, int size){
 }
 
 void encrypt (uint32_t* v, uint32_t* k) {
+	//printf("v: %x\n", v);
     uint32_t v0=v[0], v1=v[1], sum=0, i;           /* set up */
     uint32_t delta=0x9e3779b9;                     /* a key schedule constant */
     uint32_t k0=k[0], k1=k[1], k2=k[2], k3=k[3];   /* cache key */
