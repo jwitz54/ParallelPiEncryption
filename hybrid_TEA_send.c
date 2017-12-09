@@ -7,11 +7,11 @@
 #include <time.h>
 #include <string.h>
 
-#define TEXT_BYTES 240000
+#define TEXT_BYTES 2400000
 #define chunk 4
 #define NUM_PI 3
 #define MASTER 0
-#define NUM_ROUNDS 16
+#define NUM_ROUNDS 8
 
 void encrypt (uint32_t* v, uint32_t* k);
 void decrypt (uint32_t* v, uint32_t* k);
@@ -84,6 +84,7 @@ int main(int argc, char** argv) {
 	//plainEncrypt(text_sub, key, size_per_proc);
 	for(i=0; i<NUM_ROUNDS; i++){
 		mpEncrypt(text_sub, key, size_per_proc);
+		//mpDecrypt(text_sub, key, size_per_proc);
 	}
 	//plainDecrypt(text_sub, key, size_per_proc);
 	//mpDecrypt(text_sub, key, size_per_proc);
