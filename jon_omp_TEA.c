@@ -5,7 +5,6 @@
 #include <omp.h>
 #include <time.h>
 
-//test
 #define TEXT_BYTES 2400000
 #define chunk 4
 #define MASTER 0
@@ -19,9 +18,6 @@ void plainDecrypt(uint32_t *text, uint32_t *key);
 int verify(uint32_t *text, uint32_t *text_gold);
 
 int main() {
-		
-	
-
 	// Set up key and plaintext block
 	int i;
 	uint32_t key[4] = {1, 2, 3, 4};
@@ -36,9 +32,6 @@ int main() {
 		text_gold[i] = i%128;
 	}	
 
-
-	//MAIN THREAD
-
 	// Setup timing
 	struct timeval start, end;
 	double start_time_omp, start_time_standard, time;
@@ -51,7 +44,6 @@ int main() {
 		plainEncrypt(text, key);
 	}
 	printf("Time to encrypt: %f\n", (omp_get_wtime() - start_time_standard) );
-	
 	for(int i=0; i<NUM_ROUNDS; i++){
 		plainDecrypt(text, key);
 	}
@@ -62,9 +54,7 @@ int main() {
 	}
 	
 	printf("OpenMP Implementation\n");
-	// Perform and time encryption
 	start_time_omp = omp_get_wtime();
-	//Perform NUM_ROUNDS of encryption
 	for(int i=0; i<NUM_ROUNDS; i++){
 		mpEncrypt(text, key);
 	}
@@ -77,10 +67,7 @@ int main() {
 	} else {
 		printf("Correct plaintext\n");
 	}
-	//SLAVE THREADS	
-
 	return 0;
-
 }
 
 int verify(uint32_t *text, uint32_t *text_gold){

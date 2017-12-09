@@ -112,9 +112,6 @@ int main(int argc, char** argv) {
 	}
 	// Allocate plaintext and key
 	
-	//uint32_t key[4] = {1, 2, 3, 4};
-	//uint32_t* text_encrypted = calloc(size32, sizeof(uint32_t));
-	
 	//Broadcast Message size and key to all nodes
 	MPI_Bcast(key, 4, MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);
 	MPI_Bcast(&size32, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
@@ -247,7 +244,6 @@ void mpDecrypt(uint32_t *text, uint32_t *key, int size){
 }
 
 void encrypt (uint32_t* v, uint32_t* k) {
-	//printf("v: %x\n", v);
     uint32_t v0=v[0], v1=v[1], sum=0, i;           /* set up */
     uint32_t delta=0x9e3779b9;                     /* a key schedule constant */
     uint32_t k0=k[0], k1=k[1], k2=k[2], k3=k[3];   /* cache key */
