@@ -14,8 +14,8 @@ def collect_input(socket):
 
 working_dir = "/tmp/"
 #host = "127.0.0.1" #ip of raspberry pi, local host for now
-host = '10.148.13.142'
-#host='localhost'
+#host = '10.148.13.142'
+host='localhost'
 port = 8765
 
 

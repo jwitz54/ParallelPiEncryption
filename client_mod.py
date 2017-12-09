@@ -25,6 +25,7 @@ def wait_for_server_result(socket):
 
 host = 'localhost'
 #host = '10.148.13.142'
+#host = '10.33.131.208'
 port = 8765
 working_dir = 'test_server/'
 
@@ -56,10 +57,11 @@ file_name = file_path.split("/")[-1]
 #sets up connection
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((host,port))
+print("Established Connection With Server\n")
 #sends over number of files to encrypt
 #delim_message = "Number of files:" + str(num_files)
 
-
+print("Sending encryption/decryption parameters\n")
 msg_to_send = str(server_mode) + ',' + str(num_rounds) + ',' + str(key) + ',' + str(file_path) + '\n'
 s.send(msg_to_send)
 
@@ -88,11 +90,16 @@ s.shutdown(1)
 processed_file_size = int(collect_input(s).rstrip('\n'))
 processed_file_name = working_dir+file_name
 if int(server_mode)==0:
-	print("Encryption\n")
-	processed_file_name += '_encrypted'
+	print("Receiving Encrypted File\n")
+	insert_ind = processed_file_name.find(".")
+	new_processed_file_name = processed_file_name[:insert_ind] + '_enc' + processed_file_name[insert_ind:]
+	#processed_file_name += '_encrypted'
 elif int(server_mode)==1:
-	print("Decryption")
-	processed_file_name += '_decrypted'
+	print("Receiving Decrypted File\n")
+	insert_ind = processed_file_name.find(".")
+	new_processed_file_name = processed_file_name[:insert_ind] + '_enc' + processed_file_name[insert_ind:]
+	#processed_file_name += '_decrypted'
+
 f = open((processed_file_name), "wb+")
 while processed_file_size > 0:
 	if(processed_file_size<1024):
@@ -103,8 +110,10 @@ while processed_file_size > 0:
 	f.write(encrypted_file)
 	# subtract the actual number of bytes received
 	processed_file_size -= len(encrypted_file)
+print("Received Processed File\n")
+print("Terminating Connection With Server\n")
 f.close()
-s.close()
+#s.close()
 
 
 
