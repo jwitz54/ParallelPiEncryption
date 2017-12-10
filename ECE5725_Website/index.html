@@ -6,7 +6,7 @@
 -->
 <html>
 	<head>
-		<title>Prologue by HTML5 UP</title>
+		<title>Parallel Encryption with Raspberry Pi Cluster</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
@@ -24,7 +24,7 @@
 					<!-- Logo -->
 						<div id="logo">
 							<h1 id="title">ECE5725 Final Project</h1>
-							<p>Accelerating TEA</p>
+							<p>Parallel Encryption with Raspberry Pi Cluster</p>
 						</div>
 
 					<!-- Nav -->
@@ -133,7 +133,7 @@
 							<h3>Serial Implementation </h3>
 							<p>The first step in generating our design was to create a working serial implementation of the Tiny Encryption Algorithm. This algorithm was chosen because of its simplicity and relative ease to implement. This algorithm is a symmetric block cipher, meaning it is divided into “blocks” and uses the same key to encrypt and decrypt. The algorithm generally uses blocks of 64 bits. It also uses a key of 128 bits. It comprises of a series of XOR’s, additions, and shifts. In our implementation, the function takes two 32 bit integers and outputs two 32 bit integers which contain the encrypted or decrypted text.</p>
 							<article class="item">
-								<a href="#" class="image fit"><img src="images/TEA_InfoBox_Diagram.png" alt="" /></a>
+								<a href="#" class="image fit"><img src="images/TEA_InfoBox_Diagram.png" alt="" height="500" width="100"/></a>
 								<header>
 									<h4> Tiny Encryption Algorithm Diagram from <a href="https://en.wikipedia.org/wiki/Tiny_Encryption_Algorithm">Wikipedia</a></h4>
 								</header>
@@ -148,7 +148,7 @@
 
 							<p style="text-indent: 40px">“#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)”</p>
 
-							<p>This tells the OpenMP how we wish to parallelize the loop. This line identifies it as a “for” loop. The lines “default(shared) private(i)” sets the all of the variables besides the loop index to shared. “schedule(dynamic, chunk)” tells it to schedule the threads dynamically (as opposed to statically assigning blocks before execution). “Chunk” is a previously defined number which tells the compiler how many blocks to assign each thread. This was generally set to 4. Finally, we set the number of threads to 4, one for each processor.</p>
+							<p>This tells the OpenMP how we wish to parallelize the loop. This line identifies it as a “for” loop. The lines “default(shared) private(i)” sets the all of the variables besides the loop index to shared. “schedule(dynamic, chunk)” tells it to schedule the threads dynamically (as opposed to statically assigning blocks before execution). “Chunk” is a previously defined number which tells the compiler how many blocks to assign each thread. This was generally set to 1 or 4. Finally, we set the number of threads to 4, one for each processor.</p>
 
 							<article class="item">
 								<a href="#" class="image fit"><img src="images/OpenMP_Diagram.jpg" alt="" /></a>
@@ -218,7 +218,7 @@
 
 							<p>The second version was the encryption server used to encrypt and decrypt data. As previously described, this allows the user to send a file via TCP/IP and received an encrypted or decrypted file automatically. To test this, we would generate a text file to encrypt. We would then send the file to the cluster using Python scripts. The cluster master would then perform the encryption or decryption and then send the file back. This final version used the optimized MPI model. We did not time this version because we were focused on the functionality of this model as opposed to efficiency in the previous model. To verify it, we would create a text file and send it to be encrypted. Once we received the encrypted file, we would send it back to be decrypted with the same key. If the texts matched, then we knew that the algorithm worked.</p>
 
-							<p>We interfaced the c code with the python code by using the OS module to run the generated binary. We tested to see if the python code was working by sending files over from our laptops using the corresponding client python code.</p>
+							<p>We interfaced the C code with the python code by using the OS module to run the generated binary. We tested to see if the python code was working by sending files over from our laptops using the corresponding client python code.</p>
 							<article class="item">
 								<a href="#" class="image fit"><img src="images/File_Pre_Enc_Example.JPG" alt="" /></a>
 								<header>
@@ -249,7 +249,7 @@
 								<h2>Results</h2>
 							</header>
 
-							<p>These tables show the execution time for various configurations. The primary variables we explored were the file size and the number of rounds. We tested each configuration (standard, OpenMP, and hybrid) using rounds ranging from 1 to 32 and file sizes of 240 kB to 240 MB. In general, these tables reveal that the hybrid configuration worked best for a higher number of rounds with larger files. The OpenMP configuration worked best in most other cases.</p>
+							<p>These tables show the execution time for various configurations. The primary variables we explored were the file size and the number of rounds. We tested each configuration (standard, OpenMP, and hybrid) using rounds ranging from 1 to 32 and file sizes of 240 kB to 240 MB. In general, these tables reveal that the hybrid configuration worked best for a higher number of rounds with larger files. The OpenMP configuration worked best in most other cases. The graph shows the speed up compared to the standard version. The y axis was calculated by diving the runtime of the improved version by the runtime of the serial version for the corresponding file size.</p>
 
 							<article class="item">
 								<a href="#" class="image fit"><img src="images/serial_results.png" alt="" /></a>
@@ -340,7 +340,7 @@
 							</header>
 
 							<h3>Code</h3>
-							<p>Code can be found on our <a href="https://github.com/jwitz54/ParallelPiEncryption"> GitHub Repo. </a>All the finalized code is located in the directory 'FinalCode' and there is a readme.md within that directory detailing how to run the code.</p>
+							<p>Code can be found on our <a href="https://github.com/jwitz54/ParallelPiEncryption"> GitHub Repo. </a>All the finalized code is located in the directory 'FinalCode' and there is a readme within that directory detailing how to run the code.</p>
 
 							<h3>Project Costs</h3>
 							<article class="item">
@@ -357,6 +357,7 @@
 								<li><a href="https://pdfs.semanticscholar.org/5570/f67983efa9e5308a8d65db53680fb6223eb7.pdf"> Tiny Encryption Algorithm Paper</a></li>
 								<li><a href="https://en.wikipedia.org/wiki/Tiny_Encryption_Algorithm"> Tiny Encryption Algorithm Wikipedia Page</a></li>
 								<li><a href="https://courses.cit.cornell.edu/ece6930/ECE6930_Spring16_Final_MEng_Reports/RPi_Cluster/RPi_Cluster.pdf"> Raspberry Pi Cluster MEng Paper</a></li>
+								<li><a href="html5up.net"> Website Template Source</a></li>
 							</ul>
 
 
