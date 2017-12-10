@@ -17,7 +17,7 @@ void plainEncrypt(uint32_t *text, uint32_t *key, int size);
 void plainDecrypt(uint32_t *text, uint32_t *key, int size);
 int verify(uint32_t *text, uint32_t *text_gold, int size);
 
-int main() {
+int main(int argc, char** argv) {
 	// Set up key and plaintext block
 
 	int TEXT_BYTES = atoi(argv[1]);
