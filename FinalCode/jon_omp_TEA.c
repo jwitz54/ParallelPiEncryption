@@ -9,8 +9,8 @@
 #define chunk 4
 #define MASTER 0
 #define NUM_ROUNDS 8
-void encrypt (uint32_t* pt, uint32_t* key, int size); 
-void decrypt (uint32_t* ct, uint32_t* key, int size);
+void encrypt (uint32_t* pt, uint32_t* key); 
+void decrypt (uint32_t* ct, uint32_t* key);
 void mpEncrypt(uint32_t *text, uint32_t *key, int size);
 void mpDecrypt(uint32_t *text, uint32_t *key, int size);
 void plainEncrypt(uint32_t *text, uint32_t *key, int size);
@@ -22,7 +22,7 @@ int main() {
 
 	int TEXT_BYTES = atoi(argv[1]);
 	int NUM_ROUNDS = atoi(argv[2]);
-	
+
 	int i;
 	uint32_t key[4] = {1, 2, 3, 4};
 	uint32_t* text = (uint32_t*) malloc(sizeof(uint32_t) * TEXT_BYTES/4);
