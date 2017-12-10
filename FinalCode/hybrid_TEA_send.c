@@ -7,11 +7,11 @@
 #include <time.h>
 #include <string.h>
 
-#define TEXT_BYTES 2400000
+//#define TEXT_BYTES 2400000
 #define chunk 4
 #define NUM_PI 3
 #define MASTER 0
-#define NUM_ROUNDS 8
+//#define NUM_ROUNDS 8
 
 void encrypt (uint32_t* pt, uint32_t* key); 
 void decrypt (uint32_t* ct, uint32_t* key);
@@ -23,6 +23,8 @@ int verify(uint32_t *text, uint32_t *text_gold, int size);
 
 int main(int argc, char** argv) {
 	
+	int TEXT_BYTES = atoi(argv[1]);
+	int NUM_ROUNDS = atoi(argv[2]);
 
 	// Setup OpemMPI
 	MPI_Init(&argc, &argv);

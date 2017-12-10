@@ -9,16 +9,20 @@
 #define chunk 4
 #define MASTER 0
 #define NUM_ROUNDS 8
-void encrypt (uint32_t* pt, uint32_t* key); 
-void decrypt (uint32_t* ct, uint32_t* key);
-void mpEncrypt(uint32_t *text, uint32_t *key);
-void mpDecrypt(uint32_t *text, uint32_t *key);
-void plainEncrypt(uint32_t *text, uint32_t *key);
-void plainDecrypt(uint32_t *text, uint32_t *key);
-int verify(uint32_t *text, uint32_t *text_gold);
+void encrypt (uint32_t* pt, uint32_t* key, int size); 
+void decrypt (uint32_t* ct, uint32_t* key, int size);
+void mpEncrypt(uint32_t *text, uint32_t *key, int size);
+void mpDecrypt(uint32_t *text, uint32_t *key, int size);
+void plainEncrypt(uint32_t *text, uint32_t *key, int size);
+void plainDecrypt(uint32_t *text, uint32_t *key, int size);
+int verify(uint32_t *text, uint32_t *text_gold, int size);
 
 int main() {
 	// Set up key and plaintext block
+
+	int TEXT_BYTES = atoi(argv[1]);
+	int NUM_ROUNDS = atoi(argv[2]);
+	
 	int i;
 	uint32_t key[4] = {1, 2, 3, 4};
 	uint32_t* text = (uint32_t*) malloc(sizeof(uint32_t) * TEXT_BYTES/4);
@@ -41,13 +45,13 @@ int main() {
 	printf("Standard Implementation\n");
 	start_time_standard = omp_get_wtime();
 	for(int i=0; i<NUM_ROUNDS; i++){
-		plainEncrypt(text, key);
+		plainEncrypt(text, key,TEXT_BYTES/4);
 	}
 	printf("Time to encrypt: %f\n", (omp_get_wtime() - start_time_standard) );
 	for(int i=0; i<NUM_ROUNDS; i++){
-		plainDecrypt(text, key);
+		plainDecrypt(text, key,TEXT_BYTES/4);
 	}
-	if (verify(text, text_gold) == 0){
+	if (verify(text, text_gold,TEXT_BYTES/4) == 0){
 		printf("Incorrect plaintext\n");
 	} else {
 		printf("Correct plaintext\n");
@@ -56,13 +60,13 @@ int main() {
 	printf("OpenMP Implementation\n");
 	start_time_omp = omp_get_wtime();
 	for(int i=0; i<NUM_ROUNDS; i++){
-		mpEncrypt(text, key);
+		mpEncrypt(text, key,TEXT_BYTES/4);
 	}
 	printf("Time to encrypt: %f\n", (omp_get_wtime() - start_time_omp) );
 	for(int i=0; i<NUM_ROUNDS; i++){
-		mpDecrypt(text, key);
+		mpDecrypt(text, key, TEXT_BYTES/4);
 	}
-	if (verify(text, text_gold) == 0){
+	if (verify(text, text_gold, TEXT_BYTES/4) == 0){
 		printf("Incorrect plaintext\n");
 	} else {
 		printf("Correct plaintext\n");
@@ -70,10 +74,10 @@ int main() {
 	return 0;
 }
 
-int verify(uint32_t *text, uint32_t *text_gold){
+int verify(uint32_t *text, uint32_t *text_gold, int size){
 	int i;
 	int result = 1;
-	for (i = 0; i < TEXT_BYTES/4; i++){
+	for (i = 0; i < size; i++){
 		if (text[i] != text_gold[i]){
 			printf("index: %d, text: %d, gold: %d", i, text[i], text_gold[i]);
 			result = 0;
@@ -83,37 +87,37 @@ int verify(uint32_t *text, uint32_t *text_gold){
 	return result;
 }
 
-void plainEncrypt(uint32_t *text, uint32_t *key){
+void plainEncrypt(uint32_t *text, uint32_t *key, int size){
 	int i;
-	for (i = 0; i < TEXT_BYTES/4; i += 2){
+	for (i = 0; i < size; i += 2){
 		encrypt (&text[i], key);
 	}
 }
 
-void plainDecrypt(uint32_t *text, uint32_t *key){
+void plainDecrypt(uint32_t *text, uint32_t *key, int size){
 	int i;
-	for (i = 0; i < TEXT_BYTES/4; i += 2){
+	for (i = 0; i < size; i += 2){
 		decrypt (&text[i], key);
 	}
 }
 
-void mpEncrypt(uint32_t *text, uint32_t *key){
+void mpEncrypt(uint32_t *text, uint32_t *key, int size){
 	//omp_set_num_threads(4);
 	int i;
 	//#pragma omp parallel for private(i) 
 	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
-	for (i = 0; i < TEXT_BYTES/4; i += 2){
+	for (i = 0; i < size; i += 2){
 		encrypt (&text[i], key);
 	}
 	
 }
 
-void mpDecrypt(uint32_t *text, uint32_t *key){
+void mpDecrypt(uint32_t *text, uint32_t *key, int size){
 	//omp_set_num_threads(4);
 	int i;
 	//#pragma omp parallel for private(i)  
 	#pragma omp parallel for default(shared) private(i) schedule(dynamic, chunk) num_threads(4)
-	for (i = 0; i < TEXT_BYTES/4; i += 2){
+	for (i = 0; i < size; i += 2){
 	
 		decrypt (&text[i], key);
 	}
