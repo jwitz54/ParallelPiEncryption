@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
 	}
 	
 	if(rank == MASTER){
-		//Load keys and text into master thread
+		// Start time and calculate sizes
 		timeStart = MPI_Wtime();
 		text_size = TEXT_BYTES/4;
 		size_per_proc = text_size/NUM_PI;
@@ -68,6 +68,7 @@ int main(int argc, char** argv) {
 	//MPI Barrier for Synchronisation
 	MPI_Barrier(MPI_COMM_WORLD);
 	
+	// Send out data from master and receive from nodes
 	if(rank == MASTER){ 
 		MPI_Send( (text+size_per_proc), size_per_proc, MPI_UNSIGNED, 1, 0 , MPI_COMM_WORLD );
 		MPI_Send( (text+2*size_per_proc), size_per_proc, MPI_UNSIGNED, 2, 0, MPI_COMM_WORLD );
@@ -81,21 +82,17 @@ int main(int argc, char** argv) {
 	//MPI_Scatter(text, size_per_proc, MPI_UNSIGNED, text_sub, size_per_proc,
 	//			MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);	
 
-	//plainEncrypt(text_sub, key, size_per_proc);
+	// Encrypt file
 	for(i=0; i<NUM_ROUNDS; i++){
 		mpEncrypt(text_sub, key, size_per_proc);
-		//mpDecrypt(text_sub, key, size_per_proc);
 	}
-	//plainDecrypt(text_sub, key, size_per_proc);
-	//mpDecrypt(text_sub, key, size_per_proc);
 	
+	// Send file back to master
 	if(rank!=MASTER){
 		MPI_Send(text_sub, size_per_proc, MPI_UNSIGNED, 0, 0, MPI_COMM_WORLD);
 	}
 	
-	//MPI Barrier for Synchronisation
-	//MPI_Barrier(MPI_COMM_WORLD);	
-	
+	// Receive and concatenate files
 	if(rank == MASTER){
 		memcpy(text_encrypted, text_sub, size_per_proc*4);
 		MPI_Recv( (text_encrypted + size_per_proc), size_per_proc, MPI_UNSIGNED, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);

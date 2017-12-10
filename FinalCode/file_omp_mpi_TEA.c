@@ -18,7 +18,6 @@ void mpEncrypt(uint32_t *text, uint32_t *key, int size);
 void mpDecrypt(uint32_t *text, uint32_t *key, int size);
 void plainEncrypt(uint32_t *text, uint32_t *key, int size);
 void plainDecrypt(uint32_t *text, uint32_t *key, int size);
-//int verify(uint32_t *text, uint32_t *text_gold, int size);
 
 int size;
 int rank;
@@ -30,17 +29,14 @@ int main(int argc, char** argv) {
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	
-	//printf("argc:%d\n", argc);
-
 	// Determine encryption or decryption
 	int mode = atoi(argv[1]);
-	//int mode = 0;
+
 	//Number of rounds to encrypt/decrypt
 	int rounds = atoi(argv[2]);
-	//int rounds = 1;
+
 	//get input key
 	char* input_key = argv[3];
-	//char* input_key = "x!";
 	char* input_file_path = argv[4];
 	
 	// Text size
@@ -52,13 +48,8 @@ int main(int argc, char** argv) {
 	uint32_t* key = calloc(4, sizeof(uint32_t));
 	uint32_t* text; 
 	uint32_t* processed_text;
-	//uint32_t* text_gold;
 	
 	if(rank == MASTER){
-		//file path to encryption/decryption
-		//~ char* input_file_path = argv[4];
-		//char* input_file_path = "/tmp/file1.txt";
-		
 		//get length of given key
 		int len_key = 0;
 		while(input_key[len_key]!='!'){
@@ -98,11 +89,10 @@ int main(int argc, char** argv) {
 		if (remainder != 0){
 			size_bytes = size_bytes + (NUM_PI*4*2 - remainder);
 		}
-		//size in integer #'s
+		// Calculate size of 32 bit array
 		size32 = size_bytes/4;
 		text = calloc(size32, sizeof(uint32_t));
 		processed_text = calloc(size32, sizeof(uint32_t));
-		//text_gold = calloc(size32, sizeof(uint32_t));
 		
 		//read in input file into text
 		fread(text, sizeof(int32_t), original_size/4, ifp);
@@ -110,7 +100,6 @@ int main(int argc, char** argv) {
 		text_size = size_bytes/4;
 		size_per_proc = text_size/NUM_PI;
 	}
-	// Allocate plaintext and key
 	
 	//Broadcast Message size and key to all nodes
 	MPI_Bcast(key, 4, MPI_UNSIGNED, MASTER, MPI_COMM_WORLD);
@@ -118,6 +107,7 @@ int main(int argc, char** argv) {
 	MPI_Bcast(&text_size, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
 	MPI_Bcast(&size_per_proc, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
 	//MPI_Bcast(&rounds, 1, MPI_INT, MASTER, MPI_COMM_WORLD);
+
 	//Allocate memory for text_sub
 	uint32_t* text_sub = malloc(sizeof(uint32_t) * size32/NUM_PI);
 	
@@ -146,8 +136,6 @@ int main(int argc, char** argv) {
 		//printf("Encrypting File \n");
 		
 		for(i=0; i<rounds; i++){
-			//plainEncrypt(text_sub, key, size_per_proc);
-			//printf("textsub: %x key: %x rank: %d size: %d\n", text_sub, key, rank, size_per_proc);
 			mpEncrypt(text_sub, key, size_per_proc);
 			
 		}
